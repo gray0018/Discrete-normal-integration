@@ -209,7 +209,3 @@ if __name__ == '__main__':
     print("Start writing depth map...")
     write_depth_map("{0}_depth.npy".format(args.output), d, ~mask) # write depth file
     print("Finish!")
-
-    plt.figure()
-    plt.imshow(d)
-    plt.show()
