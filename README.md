@@ -36,7 +36,7 @@ python main.py data/scholar.png
 ```
 If you want to add depth prior, you can try:
 ```
-python main.py data/bunny_normal.npy -d data/bunny_sparse_depth.npy
+python main.py data/bunny/bunny_normal.npy -d data/bunny/bunny_sparse_depth.npy
 ```
 For more information:
 ```
