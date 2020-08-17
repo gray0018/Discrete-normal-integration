@@ -17,6 +17,46 @@ parser.add_argument('normal', help='the path of normal map')
 parser.add_argument('-d', '--depth', default=None, help='the path of depth prior')
 parser.add_argument('--d_lambda', type=int, default=100, help='how much will the depth prior influence the result')
 parser.add_argument('-o', '--output', default='output', help='name of the output object and depth map')
+parser.add_argument('--obj', dest='write_obj', action='store_const',
+                    const=True, default=False, help='write wavefront obj file, by default False')
+
+
+def write_obj(filename, d, d_ind):
+    obj = open(filename, "w")
+    h, w = d.shape
+
+    x = np.arange(0.5, w, 1)
+    y = np.arange(h-0.5, 0, -1)
+    xx, yy = np.meshgrid(x, y)
+    mask = d_ind>0
+    
+    xyz = np.vstack((xx[mask], yy[mask], d[mask])).T
+    obj.write(''.join(["v {0} {1} {2}\n".format(x, y, z) for x, y, z in xyz])) # write vertices into obj file
+
+    right = np.roll(d_ind, -1, axis=1)
+    right[:, -1] = 0
+    right_mask = right>0
+
+    down = np.roll(d_ind, -1, axis=0)
+    down[-1, :] = 0
+    down_mask = down>0
+
+    rd = np.roll(d_ind, -1, axis=1)
+    rd = np.roll(rd, -1, axis=0)
+    rd[-1, :] = 0
+    rd[:, -1] = 0
+    rd_mask = rd>0
+
+    up_tri = mask&rd_mask&right_mask # counter clockwise
+    low_tri = mask&down_mask&rd_mask # counter clockwise
+
+    xyz = np.vstack((d_ind[up_tri], rd[up_tri], right[up_tri])).T
+    obj.write(''.join(["f {0} {1} {2}\n".format(x, y, z) for x, y, z in xyz])) # write upper triangle facet into obj file
+    xyz = np.vstack((d_ind[low_tri], down[low_tri], rd[low_tri])).T
+    obj.write(''.join(["f {0} {1} {2}\n".format(x, y, z) for x, y, z in xyz])) # write lower triangle facet into obj file
+
+    obj.close()
+
 
 class PoissonOperator(object):
 
@@ -31,6 +71,11 @@ class PoissonOperator(object):
         self.valid_index = np.where(self.mask.ravel() != 0)[0]
         self.valid_num = len(self.valid_index)
         self.index_1d.reshape(-1)[self.valid_index] = np.arange(self.valid_num)
+
+        self.v_count = (self.mask.astype(np.int32)).sum() # total number of all vertices
+        self.v_index = np.zeros_like(self.mask, dtype='uint') # indices for all vertices
+        self.v_index[self.mask.astype(np.bool_)] = np.arange(self.v_count)+1
+
 
         self.depth = np.zeros([h, w])
 
@@ -205,6 +250,11 @@ if __name__ == '__main__':
     task = PoissonOperator(np.dstack([p, q]), mask.astype(np.int8), args.depth, args.d_lambda)
     print("Start normal integration...")
     d = task.run()
+
+    if args.write_obj:
+        print("Start writing obj file...")
+        write_obj("{0}.obj".format(args.output), d, task.v_index) # write obj file
+
 
     print("Start writing depth map...")
     write_depth_map("{0}_depth.npy".format(args.output), d, ~mask) # write depth file
