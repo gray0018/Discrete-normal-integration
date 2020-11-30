@@ -1,4 +1,4 @@
-# Poisson normal integration
+# Discrete normal integration
 
 ## What is the Poisson normal integration?
 Poisson normal integration is an efficient method to reconstruct surfaces from given normal maps. by solving a Poisson Equation. The Equation comes from solving a functional. We can also add sparse depth prior to refine the result.<br>
